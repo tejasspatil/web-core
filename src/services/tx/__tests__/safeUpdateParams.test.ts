@@ -6,12 +6,16 @@ import {
 } from '@gnosis.pm/safe-deployments'
 import { ChainInfo, SafeInfo } from '@gnosis.pm/safe-react-gateway-sdk'
 import { ethers } from 'ethers'
+import { Web3Provider } from '@ethersproject/providers'
 import { CHANGE_FALLBACK_HANDLER_ABI, CHANGE_MASTER_COPY_ABI, createUpdateSafeTxs } from '../safeUpdateParams'
 import { LATEST_SAFE_VERSION } from '@/config/constants'
+import * as web3 from '@/hooks/wallets/web3'
 
 const MOCK_SAFE_ADDRESS = '0x0000000000000000000000000000000000005AFE'
 
 describe('safeUpgradeParams', () => {
+  jest.spyOn(web3, 'getWeb3').mockImplementation(() => new Web3Provider(jest.fn()))
+
   it('Should upgrade L1 safe to L1 1.3.0', () => {
     const mockSafe = {
       address: {

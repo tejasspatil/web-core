@@ -12,11 +12,35 @@ import { Contract } from 'ethers'
 import { Interface } from '@ethersproject/abi'
 import semverSatisfies from 'semver/functions/satisfies'
 import { type ChainInfo } from '@gnosis.pm/safe-react-gateway-sdk'
-import { type Gnosis_safe } from '@/types/contracts/Gnosis_safe'
+import type { GetContractProps } from '@gnosis.pm/safe-core-sdk-types'
 import { type Compatibility_fallback_handler } from '@/types/contracts/Compatibility_fallback_handler'
-import { type Multi_send } from '@/types/contracts/Multi_send'
-import { type Proxy_factory } from '@/types/contracts/Proxy_factory'
-import { type Multi_send_call_only } from '@/types/contracts/Multi_send_call_only'
+import { createEthersAdapter, isValidSDKSafeVersion } from '@/hooks/coreSDK/safeCoreSDK'
+
+export const getMultiSendCallOnlyContractAddress = (chainId: string): string | undefined => {
+  const deployment = getMultiSendCallOnlyDeployment({ network: chainId }) || getMultiSendCallOnlyDeployment()
+
+  return deployment?.networkAddresses[chainId]
+}
+
+export const getMultiSendContractAddress = (chainId: string): string | undefined => {
+  const deployment = getMultiSendDeployment({ network: chainId }) || getMultiSendDeployment()
+
+  return deployment?.networkAddresses[chainId]
+}
+
+const getValidatedGetContractProps = (
+  chainId: string,
+  safeVersion: string,
+): Pick<GetContractProps, 'chainId' | 'safeVersion'> => {
+  if (!isValidSDKSafeVersion(safeVersion)) {
+    throw new Error(`${safeVersion} is not a valid Safe version`)
+  }
+
+  return {
+    chainId: +chainId,
+    safeVersion,
+  }
+}
 
 const getSafeContractDeployment = (chain: ChainInfo, safeVersion: string): SingletonDeployment | undefined => {
   // We check if version is prior to v1.0.0 as they are not supported but still we want to keep a minimum compatibility
@@ -43,17 +67,58 @@ const getSafeContractDeployment = (chain: ChainInfo, safeVersion: string): Singl
   )
 }
 
-export const getGnosisSafeContractInstance = (chain: ChainInfo, safeVersion: string): Gnosis_safe => {
-  const safeSingletonDeployment = getSafeContractDeployment(chain, safeVersion)
+export const getGnosisSafeContractInstance = (chain: ChainInfo, safeVersion: string = LATEST_SAFE_VERSION) => {
+  const ethAdapter = createEthersAdapter()
 
-  if (!safeSingletonDeployment) {
-    throw new Error(`GnosisSafe contract not found for chainId: ${chain.chainId}`)
-  }
-  const contractAddress = safeSingletonDeployment.networkAddresses[chain.chainId]
+  const singletonDeployment = getSafeContractDeployment(chain, safeVersion)
 
-  return new Contract(contractAddress, safeSingletonDeployment.abi) as Gnosis_safe
+  return ethAdapter.getSafeContract({
+    singletonDeployment,
+    ...getValidatedGetContractProps(chain.chainId, safeVersion),
+  })
 }
 
+export const getMultiSendContractInstance = (chainId: string, safeVersion: string = LATEST_SAFE_VERSION) => {
+  const ethAdapter = createEthersAdapter()
+
+  const singletonDeployment = getMultiSendDeployment({ network: chainId }) || getMultiSendDeployment()
+
+  return ethAdapter.getMultiSendContract({
+    singletonDeployment,
+    ...getValidatedGetContractProps(chainId, safeVersion),
+  })
+}
+
+export const getMultiSendCallOnlyContractInstance = (chainId: string, safeVersion: string = LATEST_SAFE_VERSION) => {
+  const ethAdapter = createEthersAdapter()
+
+  const singletonDeployment = getMultiSendCallOnlyDeployment({ network: chainId }) || getMultiSendCallOnlyDeployment()
+
+  return ethAdapter.getMultiSendCallOnlyContract({
+    singletonDeployment,
+    ...getValidatedGetContractProps(chainId, safeVersion),
+  })
+}
+
+export const getProxyFactoryContractInstance = (chainId: string, safeVersion: string = LATEST_SAFE_VERSION) => {
+  const ethAdapter = createEthersAdapter()
+
+  const singletonDeployment =
+    getProxyFactoryDeployment({
+      version: LATEST_SAFE_VERSION,
+      network: chainId,
+    }) ||
+    getProxyFactoryDeployment({
+      version: LATEST_SAFE_VERSION,
+    })
+
+  return ethAdapter.getSafeProxyFactoryContract({
+    singletonDeployment,
+    ...getValidatedGetContractProps(chainId, safeVersion),
+  })
+}
+
+// TODO: Yet to be implemented in Core SDK
 export const getFallbackHandlerContractInstance = (chainId: string): Compatibility_fallback_handler => {
   const fallbackHandlerDeployment =
     getFallbackHandlerDeployment({
@@ -71,58 +136,4 @@ export const getFallbackHandlerContractInstance = (chainId: string): Compatibili
   const contractAddress = fallbackHandlerDeployment.networkAddresses[chainId]
 
   return new Contract(contractAddress, new Interface(fallbackHandlerDeployment.abi)) as Compatibility_fallback_handler
-}
-
-export const getMultiSendCallOnlyContractAddress = (chainId: string): string | undefined => {
-  const deployment = getMultiSendCallOnlyDeployment({ network: chainId }) || getMultiSendCallOnlyDeployment()
-
-  return deployment?.networkAddresses[chainId]
-}
-
-export const getMultiSendCallOnlyContractInstance = (chainId: string): Multi_send_call_only => {
-  const multiSendDeployment = getMultiSendCallOnlyDeployment({ network: chainId }) || getMultiSendCallOnlyDeployment()
-
-  if (!multiSendDeployment) {
-    throw new Error(`MultiSendCallOnly contract not found for chainId: ${chainId}`)
-  }
-
-  const contractAddress = multiSendDeployment.networkAddresses[chainId]
-
-  return new Contract(contractAddress, new Interface(multiSendDeployment.abi)) as Multi_send_call_only
-}
-
-export const getMultiSendContractAddress = (chainId: string): string | undefined => {
-  const deployment = getMultiSendDeployment({ network: chainId }) || getMultiSendDeployment()
-
-  return deployment?.networkAddresses[chainId]
-}
-
-const getMultiSendContractInstance = (chainId: string): Multi_send => {
-  const multiSendDeployment = getMultiSendDeployment({ network: chainId }) || getMultiSendDeployment()
-
-  if (!multiSendDeployment) {
-    throw new Error(`MultiSend contract not found for chainId: ${chainId}`)
-  }
-
-  const contractAddress = multiSendDeployment.networkAddresses[chainId]
-
-  return new Contract(contractAddress, new Interface(multiSendDeployment.abi)) as Multi_send
-}
-
-export const getProxyFactoryContractInstance = (chainId: string): Proxy_factory => {
-  const proxyFactoryDeployment =
-    getProxyFactoryDeployment({
-      version: LATEST_SAFE_VERSION,
-      network: chainId.toString(),
-    }) ||
-    getProxyFactoryDeployment({
-      version: LATEST_SAFE_VERSION,
-    })
-
-  if (!proxyFactoryDeployment) {
-    throw new Error(`GnosisSafeProxyFactory contract not found for chainId: ${chainId}`)
-  }
-  const contractAddress = proxyFactoryDeployment.networkAddresses[chainId]
-
-  return new Contract(contractAddress, proxyFactoryDeployment.abi) as Proxy_factory
 }
