@@ -37,6 +37,24 @@ describe('formatters', () => {
     })
   })
 
+  describe('addDecimalSeparators', () => {
+    it('adds decimal separators', () => {
+      const result1 = formatters.addDecimalSeparators('1')
+      expect(result1).toBe('1')
+
+      const result2 = formatters.addDecimalSeparators('100000000')
+      expect(result2).toBe('100,000,000')
+    })
+
+    it('does not add decimal separators for values < 1', () => {
+      const result1 = formatters.addDecimalSeparators('0.1')
+      expect(result1).toBe('0.1')
+
+      const result2 = formatters.addDecimalSeparators('0.000000000000000001')
+      expect(result2).toBe('0.000000000000000001')
+    })
+  })
+
   describe('shortenAddress', () => {
     it('should shorten an address', () => {
       expect(formatters.shortenAddress('0x1234567890123456789012345678901234567890')).toEqual('0x1234...7890')

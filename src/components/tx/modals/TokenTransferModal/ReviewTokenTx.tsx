@@ -8,13 +8,14 @@ import { SendTxType } from '@/components/tx/modals/TokenTransferModal/SendAssets
 import TokenIcon from '@/components/common/TokenIcon'
 import ReviewSpendingLimitTx from '@/components/tx/modals/TokenTransferModal/ReviewSpendingLimitTx'
 import ReviewMultisigTx from '@/components/tx/modals/TokenTransferModal/ReviewMultisigTx'
+import { addDecimalSeparators } from '@/utils/formatters'
 
 export const TokenTransferReview = ({
   amount,
   tokenInfo,
   children,
 }: {
-  amount: number | string
+  amount: string
   tokenInfo: TokenInfo
   children?: ReactNode
 }) => {
@@ -26,7 +27,7 @@ export const TokenTransferReview = ({
 
       <Box mt={1} fontSize={20}>
         {children}
-        {amount} {tokenInfo.symbol}
+        {addDecimalSeparators(amount)} {tokenInfo.symbol}
       </Box>
     </Box>
   )
