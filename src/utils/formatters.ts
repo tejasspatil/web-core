@@ -52,8 +52,13 @@ export const safeParseUnits = (value: string, decimals: number | string = GWEI):
 }
 
 export const addDecimalSeparators = (value: string): string => {
-  const amount = Number(value)
-  return amount < 1 ? value : amount.toLocaleString()
+  if (Number(value) < 1) {
+    return value
+  }
+
+  const [integer, decimals] = value.split('.')
+
+  return `${Number(integer).toLocaleString()}${decimals ? `.${decimals}` : ''}`
 }
 
 export const shortenAddress = (address: string, length = 4): string => {

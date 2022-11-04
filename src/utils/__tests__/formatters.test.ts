@@ -52,6 +52,12 @@ describe('formatters', () => {
 
       const result2 = formatters.addDecimalSeparators('0.000000000000000001')
       expect(result2).toBe('0.000000000000000001')
+
+      const result3 = formatters.addDecimalSeparators('1.000000000000000001')
+      expect(result3).toBe('1.000000000000000001')
+
+      const result4 = formatters.addDecimalSeparators('100000000.000000000000000001')
+      expect(result4).toBe('100,000,000.000000000000000001')
     })
   })
 
