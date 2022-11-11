@@ -162,7 +162,9 @@ const AddressBookTable = () => {
       {open[ModalType.REMOVE] && <RemoveDialog handleClose={handleClose} address={defaultValues?.address || ''} />}
 
       {/* Send funds modal */}
-      {selectedAddress && <NewTxModal onClose={() => setSelectedAddress(undefined)} recipient={selectedAddress} />}
+      {selectedAddress && (
+        <NewTxModal onClose={() => setSelectedAddress(undefined)} recipient={selectedAddress || ''} />
+      )}
     </>
   )
 }
