@@ -164,10 +164,9 @@ const AppFrame = ({ appUrl, allowedFeaturesList }: AppFrameProps): ReactElement 
   }, [appName, chainId, closeSignMessageModal, closeTxModal, communicator, signMessageModalState, txModalState])
 
   useEffect(() => {
-    const unsubscribe = safeMsgSubscribe(SafeMsgEvent.PROPOSE, ({ signature, requestId }) => {
-      const currentSafeAppRequestId = signMessageModalState.requestId
-      if (currentSafeAppRequestId === requestId && safe.threshold === 1) {
-        communicator?.send(signature, requestId)
+    const unsubscribe = safeMsgSubscribe(SafeMsgEvent.PROPOSE, ({ messageHash, requestId }) => {
+      if (signMessageModalState.requestId === requestId) {
+        communicator?.send({ messageHash }, requestId)
       }
     })
 
