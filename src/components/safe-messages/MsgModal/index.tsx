@@ -128,7 +128,9 @@ const MsgModal = ({
                   width={24}
                   height={24}
                 />
-                <Typography variant="h4">{name}</Typography>
+                <Typography variant="h4" pl={1}>
+                  {name}
+                </Typography>
               </Box>
             </Grid>
           </Grid>
