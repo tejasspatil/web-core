@@ -17,7 +17,7 @@ import { getExplorerLink } from '@/utils/gateway'
 
 const TxNotifications = {
   [TxEvent.SIGN_FAILED]: 'Signature failed. Please try again.',
-  [TxEvent.PROPOSED]: 'Your transaction was successfully proposed.',
+  [TxEvent.PROPOSED]: 'Your transaction was successfully created.',
   [TxEvent.PROPOSE_FAILED]: 'Failed proposing the transaction. Please try again.',
   [TxEvent.SIGNATURE_PROPOSED]: 'You successfully signed the transaction.',
   [TxEvent.SIGNATURE_PROPOSE_FAILED]: 'Failed to send the signature. Please try again.',

@@ -14,6 +14,7 @@ import ErrorMessage from '../ErrorMessage'
 import Summary from '@/components/transactions/TxDetails/Summary'
 import { trackEvent, MODALS_EVENTS } from '@/services/analytics'
 import { isEmptyHexData } from '@/utils/hex'
+import { getNativeTransferData } from '@/services/tx/tokenTransferParams'
 
 type DecodedTxProps = {
   tx?: SafeTransaction
@@ -24,8 +25,9 @@ const DecodedTx = ({ tx, txId }: DecodedTxProps): ReactElement | null => {
   const chainId = useChainId()
   const encodedData = tx?.data.data
   const isEmptyData = !!encodedData && isEmptyHexData(encodedData)
+  const nativeTransfer = isEmptyData ? getNativeTransferData(tx?.data) : undefined
 
-  const [decodedData, decodedDataError, decodedDataLoading] = useAsync<DecodedDataResponse>(() => {
+  const [decodedData = nativeTransfer, decodedDataError, decodedDataLoading] = useAsync<DecodedDataResponse>(() => {
     if (!encodedData || isEmptyData) return
     return getDecodedData(chainId, encodedData)
   }, [chainId, encodedData, isEmptyData])
@@ -34,10 +36,6 @@ const DecodedTx = ({ tx, txId }: DecodedTxProps): ReactElement | null => {
     if (!txId) return
     return getTransactionDetails(chainId, txId)
   }, [])
-
-  if (isEmptyData && !txId) {
-    return null
-  }
 
   const onChangeExpand = (_: SyntheticEvent, expanded: boolean) => {
     trackEvent({ ...MODALS_EVENTS.TX_DETAILS, label: expanded ? 'Open' : 'Close' })

@@ -8,6 +8,7 @@ import { Box } from '@mui/material'
 import { BatchExecuteHoverProvider } from '@/components/transactions/BatchExecuteButton/BatchExecuteHoverProvider'
 import TxNavigation from '../../components/transactions/TxNavigation'
 import { useHasPendingTxs, usePendingTxsQueue } from '@/hooks/usePendingTxs'
+import { useDraftBatchTxs } from '@/hooks/useDraftBatch'
 
 const Queue: NextPage = () => {
   const hasPending = useHasPendingTxs()
@@ -30,6 +31,9 @@ const Queue: NextPage = () => {
 
         <main>
           <Box mb={4}>
+            {/* Draft batch transactions */}
+            <PaginatedTxns useTxns={useDraftBatchTxs} />
+
             {/* Pending unsigned transactions */}
             {hasPending && <PaginatedTxns useTxns={usePendingTxsQueue} />}
 

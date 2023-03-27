@@ -1,5 +1,5 @@
 import { type ReactElement, type ReactNode, type SyntheticEvent, useEffect, useState } from 'react'
-import { Button, DialogContent, Typography } from '@mui/material'
+import { Button, DialogContent, FormControlLabel, Radio, RadioGroup, Typography } from '@mui/material'
 import type { SafeTransaction } from '@safe-global/safe-core-sdk-types'
 
 import useTxSender from '@/hooks/useTxSender'
@@ -27,6 +27,8 @@ import CheckWallet from '@/components/common/CheckWallet'
 import ExternalLink from '@/components/common/ExternalLink'
 import { getExplorerLink } from '@/utils/gateway'
 import { ImplementationVersionState } from '@safe-global/safe-gateway-typescript-sdk'
+import useMakeBatchTx from '@/hooks/useMakeBatchTx'
+import { useUpdateBatch } from '@/hooks/useDraftBatch'
 
 type SignOrExecuteProps = {
   safeTx?: SafeTransaction
@@ -60,6 +62,7 @@ const SignOrExecuteForm = ({
   const isOwner = useIsSafeOwner()
   const provider = useWeb3()
   const currentChain = useCurrentChain()
+  const updateBatch = useUpdateBatch()
   const hasPending = useHasPendingTxs()
   const { createTx, dispatchTxProposal, dispatchOnChainSigning, dispatchTxSigning, dispatchTxExecution } = useTxSender()
 
@@ -69,13 +72,16 @@ const SignOrExecuteForm = ({
   // Internal state
   const [shouldExecute, setShouldExecute] = useState<boolean>(true)
   const [isSubmittable, setIsSubmittable] = useState<boolean>(true)
+  const [isBatching, setBatching] = useState<boolean>(false)
   const [tx, setTx] = useState<SafeTransaction | undefined>(safeTx)
   const [submitError, setSubmitError] = useState<Error | undefined>()
+  const [batchTx, batchTxError] = useMakeBatchTx(isBatching ? tx : undefined)
 
   // Check that the transaction is executable
-  const isNewExecutableTx = !txId && safe.threshold === 1 && !hasPending
+  const isCreation = !txId
+  const isNewExecutableTx = isCreation && safe.threshold === 1 && !hasPending
   const isCorrectNonce = tx?.data.nonce === safe.nonce
-  const canExecute = isCorrectNonce && (isExecutable || isNewExecutableTx)
+  const canExecute = isCorrectNonce && (isExecutable || isNewExecutableTx) && !isBatching
 
   // If checkbox is checked and the transaction is executable, execute it, otherwise sign it
   const willExecute = (onlyExecute || shouldExecute) && canExecute
@@ -101,7 +107,7 @@ const SignOrExecuteForm = ({
   // Estimating gas
   const isEstimating = willExecute && gasLimitLoading
   // Nonce cannot be edited if the tx is already proposed, or signed, or it's a rejection
-  const nonceReadonly = !!txId || !!tx?.signatures.size || isRejection
+  const nonceReadonly = isCreation || !!tx?.signatures.size || isRejection
 
   // Assert that wallet, tx and provider are defined
   const assertDependencies = (): [ConnectedWallet, SafeTransaction, Web3Provider] => {
@@ -175,14 +181,23 @@ const SignOrExecuteForm = ({
     return id
   }
 
+  const onBatch = async () => {
+    if (!batchTx) {
+      throw new Error('Failed to create a batch transaction')
+    }
+    const id = await proposeTx(batchTx)
+    updateBatch(id)
+  }
+
   // On modal submit
   const handleSubmit = async (e: SyntheticEvent) => {
     e.preventDefault()
+
     setIsSubmittable(false)
     setSubmitError(undefined)
 
     try {
-      await (willExecute ? onExecute() : onSign())
+      await (isBatching ? onBatch() : willExecute ? onExecute() : onSign())
     } catch (err) {
       logError(Errors._804, (err as Error).message)
       setIsSubmittable(true)
@@ -217,23 +232,37 @@ const SignOrExecuteForm = ({
     disableSubmit ||
     cannotPropose ||
     isExecutionLoop ||
-    isValidExecutionLoading
+    isValidExecutionLoading ||
+    (isBatching && !batchTx)
 
-  const error = props.error || (willExecute ? gasLimitError || executionValidationError : undefined)
+  const error = props.error || (willExecute ? gasLimitError || executionValidationError : undefined) || batchTxError
 
   return (
     <form onSubmit={handleSubmit}>
       <DialogContent>
         {children}
 
-        <DecodedTx tx={tx} txId={txId} />
+        {isCreation && (
+          <RadioGroup
+            aria-labelledby="sign-or-batch"
+            defaultValue="sign"
+            name="signing"
+            onChange={(_, value) => setBatching(value !== 'sign')}
+            sx={{ mb: 1 }}
+          >
+            <FormControlLabel value="sign" control={<Radio />} label="Sign" />
+            <FormControlLabel value="batch" control={<Radio />} label="Add to batch" />
+          </RadioGroup>
+        )}
+
+        <DecodedTx tx={batchTx || tx} txId={txId} />
 
         {canExecute && <ExecuteCheckbox checked={shouldExecute} onChange={setShouldExecute} disabled={onlyExecute} />}
 
         <AdvancedParams
           params={advancedParams}
           recommendedGasLimit={gasLimit}
-          recommendedNonce={safeTx?.data.nonce}
+          recommendedNonce={(batchTx || safeTx)?.data.nonce}
           willExecute={willExecute}
           nonceReadonly={nonceReadonly}
           onFormSubmit={onAdvancedSubmit}
@@ -242,7 +271,7 @@ const SignOrExecuteForm = ({
 
         <TxSimulation
           gasLimit={advancedParams.gasLimit?.toNumber()}
-          transactions={tx}
+          transactions={batchTx || tx}
           canExecute={canExecute}
           disabled={submitDisabled}
         />
