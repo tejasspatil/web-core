@@ -11,6 +11,7 @@ type MultisendProps = {
   txData?: TransactionData
   variant?: AccordionProps['variant']
   showDelegateCallWarning?: boolean
+  noHeader?: boolean
 }
 
 const MultisendActionsHeader = ({
@@ -48,6 +49,7 @@ export const Multisend = ({
   txData,
   variant = 'elevation',
   showDelegateCallWarning = true,
+  noHeader = false,
 }: MultisendProps): ReactElement | null => {
   const [openMap, setOpenMap] = useState<Record<number, boolean>>()
   const isOpenMapUndefined = openMap == null
@@ -82,7 +84,8 @@ export const Multisend = ({
 
   return (
     <>
-      <MultisendActionsHeader setOpen={setOpenMap} amount={multiSendTransactions.length} />
+      {!noHeader && <MultisendActionsHeader setOpen={setOpenMap} amount={multiSendTransactions.length} />}
+
       {multiSendTransactions.map(({ dataDecoded, data, value, to, operation }, index) => {
         const onChange: AccordionProps['onChange'] = (_, expanded) => {
           setOpenMap((prev) => ({

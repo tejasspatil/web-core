@@ -6,6 +6,7 @@ import {
   getDecodedData,
   getTransactionDetails,
   type TransactionDetails,
+  Operation,
 } from '@safe-global/safe-gateway-typescript-sdk'
 import useChainId from '@/hooks/useChainId'
 import useAsync from '@/hooks/useAsync'
@@ -15,6 +16,7 @@ import Summary from '@/components/transactions/TxDetails/Summary'
 import { trackEvent, MODALS_EVENTS } from '@/services/analytics'
 import { isEmptyHexData } from '@/utils/hex'
 import { getNativeTransferData } from '@/services/tx/tokenTransferParams'
+import Multisend from '@/components/transactions/TxDetails/TxData/DecodedData/Multisend'
 
 type DecodedTxProps = {
   tx?: SafeTransaction
@@ -31,6 +33,8 @@ const DecodedTx = ({ tx, txId }: DecodedTxProps): ReactElement | null => {
     if (!encodedData || isEmptyData) return
     return getDecodedData(chainId, encodedData)
   }, [chainId, encodedData, isEmptyData])
+
+  const isMultisend = decodedData?.parameters?.[0].valueDecoded
 
   const [txDetails, txDetailsError, txDetailsLoading] = useAsync<TransactionDetails>(() => {
     if (!txId) return
@@ -63,6 +67,22 @@ const DecodedTx = ({ tx, txId }: DecodedTxProps): ReactElement | null => {
             <ErrorMessage error={decodedDataError}>Failed decoding transaction data</ErrorMessage>
           ) : (
             decodedDataLoading && <Skeleton />
+          )}
+
+          {isMultisend && (
+            <Box mt={3}>
+              <Multisend
+                txData={{
+                  dataDecoded: decodedData,
+                  to: { value: tx?.data.to || '' },
+                  value: tx?.data.value,
+                  operation: Operation.CALL,
+                  trustedDelegateCallTarget: false,
+                }}
+                variant="outlined"
+                noHeader
+              />
+            </Box>
           )}
         </AccordionDetails>
       </Accordion>
