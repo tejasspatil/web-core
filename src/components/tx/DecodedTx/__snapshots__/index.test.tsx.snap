@@ -1,0 +1,3 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`DecodedTx should render an ERC20 transfer 1`] = `undefined`;
