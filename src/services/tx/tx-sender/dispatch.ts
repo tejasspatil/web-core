@@ -1,5 +1,10 @@
 import type { SafeInfo, TransactionDetails } from '@safe-global/safe-gateway-typescript-sdk'
-import type { SafeTransaction, TransactionOptions, TransactionResult } from '@safe-global/safe-core-sdk-types'
+import type {
+  SafeTransaction,
+  SafeTransactionEIP712Args,
+  TransactionOptions,
+  TransactionResult,
+} from '@safe-global/safe-core-sdk-types'
 import type { EthersError } from '@/utils/ethers-utils'
 import { didReprice, didRevert } from '@/utils/ethers-utils'
 import type MultiSendCallOnlyEthersContract from '@safe-global/safe-ethers-lib/dist/src/contracts/MultiSendCallOnly/MultiSendCallOnlyEthersContract'
@@ -19,8 +24,9 @@ import {
   assertWalletChain,
   tryOffChainSigning,
 } from './sdk'
-import { createWeb3 } from '@/hooks/wallets/web3'
+import { createWeb3, getWeb3ReadOnly } from '@/hooks/wallets/web3'
 import { type OnboardAPI } from '@web3-onboard/core'
+import { EIP1271Signature } from '@/utils/signatures'
 
 /**
  * Propose a transaction
@@ -87,6 +93,52 @@ export const dispatchTxSigning = async (
   txDispatch(TxEvent.SIGNED, { txId })
 
   return signedTx
+}
+
+export const dispatchSafeSigning = async (
+  safeTx: SafeTransaction,
+  safeVersion: SafeInfo['version'],
+  onboard: OnboardAPI,
+  chainId: SafeInfo['chainId'],
+  safeAddress: string,
+  txId?: string,
+) => {
+  if (!safeVersion) {
+    throw new Error('Cannot sign without safe version')
+  }
+
+  try {
+    const safeTransactionEIP712Args: SafeTransactionEIP712Args = {
+      safeAddress,
+      safeVersion,
+      chainId: parseInt(chainId),
+      safeTransactionData: safeTx.data,
+    }
+
+    const safeSDK = await getSafeSDKWithSigner(onboard, chainId)
+    const signorAddress = await safeSDK.getEthAdapter().getSignerAddress()
+    if (!signorAddress) {
+      throw Error('No signor address found')
+    }
+    const signature = await safeSDK.getEthAdapter().signTypedData(safeTransactionEIP712Args, 'v4')
+    let offset = 65 // The signature which is being added itself
+    safeTx.signatures.forEach((sig) => {
+      offset += 65 + sig.dynamicPart().length / 2
+    })
+
+    safeTx.addSignature(new EIP1271Signature(signorAddress, signature, offset))
+
+    getWeb3ReadOnly()
+
+    console.log('Signatures encoded', safeTx.encodedSignatures())
+
+    txDispatch(TxEvent.SIGNED, { txId })
+
+    return safeTx
+  } catch (error) {
+    txDispatch(TxEvent.SIGN_FAILED, { txId, error: error as Error })
+    throw error
+  }
 }
 
 /**
